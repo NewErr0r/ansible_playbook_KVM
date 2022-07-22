@@ -1,0 +1,60 @@
+---
+- name: Deploy KVM on CentOS 
+  hosts: Centos 
+  become: true 
+
+  tasks:
+    - name: Install cockpit for Web Administations Server
+      dnf: 
+        name: "{{ packages }}"
+        state: latest
+      vars:
+        packages:
+           - cockpit
+           - cockpit-machines
+      notify: 
+        - Enable cockpit.socket
+
+    - name: Configure Firewalld
+      firewalld: 
+        service: cockpit
+        permanent: yes
+        state: enabled 
+      notify:
+        - Restart Firewalld
+
+    - name: Installing the KVM Virtualization Module
+      dnf: 
+        name: "{{ packages }}"
+        state: latest 
+      vars: 
+        packages:
+          - virt-install 
+          - virt-viewer 
+      notify:
+        - Enable libvirt
+
+    - name: Checking the Libvirt hypervisor
+      command: virt-host-validate
+      register: check_libvirt
+
+    - debug:
+        var: check_libvirt
+
+  handlers:
+    - name: Restart Firewalld
+      service: 
+        name: firewalld 
+        state: restarted 
+
+    - name: Enable cockpit.socket
+      service: 
+        name: cockpit.socket
+        enabled: yes
+        state: started
+
+    - name: Enable libvirt
+      service: 
+        name: libvirtd
+        enabled: yes
+        state: started     
